@@ -1,0 +1,14 @@
+{
+    "Rules": [{
+        "ID": "Move to IA and del incomplete multi part upload after 7d",
+        "Prefix": "",
+        "Status": "Enabled",
+        "AbortIncompleteMultipartUpload": {
+            "DaysAfterInitiation": 7
+        },
+        "Transitions": [{
+            "Days": 30,
+            "StorageClass": "INTELLIGENT_TIERING"
+        }]
+    }]
+}
