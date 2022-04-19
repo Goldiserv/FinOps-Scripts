@@ -86,9 +86,11 @@ def query_metrics(metric_name):
         write_to_file(repr(result))
         
 def write_to_file(data_str):
-    with open("Datadog\data\output4.txt", "a") as o:
+    with open("Datadog\data\dd-nw-in-max-20220401-20220415.txt", "a") as o:
         o.write(data_str)
         o.close()
+
+# Uncomment any line below to run
 
 # max:aws.ec2.cpuutilization.maximum{*} by {team}
 # list_notebooks()
@@ -96,7 +98,11 @@ def write_to_file(data_str):
 
 # query_metrics("max:aws.ec2.cpuutilization.maximum{*} by {team}.rollup(max, 3600)")
 # query_metrics("max:aws.ec2.cpuutilization.maximum{*} by {team,name,instance_id}")
-query_metrics("max:aws.ec2.cpuutilization.maximum{*} by {team,name,instance_id}.rollup(max, 86400)")
+
+# CPU
+# query_metrics("max:aws.ec2.cpuutilization.maximum{*} by {team,name,instance_id}.rollup(max, 86400)")
+# NW in
+query_metrics("max:aws.ec2.network_in.maximum{*} by {team,name,instance_id}.rollup(max, 86400)")
 
 # query_metrics("aws.rds.read_latency")
 
