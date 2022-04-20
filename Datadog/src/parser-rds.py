@@ -62,8 +62,10 @@ def read_util_data(file_name, output_file_name, prefix):
     )
     input_str = read_from_file(data_file)
     # print(input_str)
-    input_str = str(input_str).replace("'\n                           '", '')
-    input_str = str(input_str).replace("'\n          '", '')
+    input_str = str(input_str).replace("'\n                           '", "")
+    input_str = str(input_str).replace("'\n          '", "")
+    input_str = str(input_str).replace("'short_name': None", "'short_name': 'None'")
+    input_str = str(input_str).replace("'unit': None", "'unit': 'None'")
     input_str = str(input_str).replace("'", '"')
     input_str = str(input_str).replace(" None]", " null]")
     json_object = json.loads(input_str)
@@ -90,7 +92,7 @@ def read_util_data(file_name, output_file_name, prefix):
     write_to_csv(
         output_data_file,
         [
-            "instance_id",
+            "dbinstanceidentifier",
             "scope",
             prefix + "_count",
             prefix + "_max",
@@ -113,14 +115,16 @@ def read_util_data(file_name, output_file_name, prefix):
             "tags_2",
             "tags_3",
             "tags_4",
+            "tags_5",
+            "tags_6",
         ],
     )
 
     for series_obj in json_object["series"]:  # array of Json
         arr_builder = []
         tag_set = series_obj["tag_set"]
-        if "instance_id:" in tag_set[0]:
-            arr_builder.append(tag_set[0].replace("instance_id:", ""))
+        if "dbinstanceidentifier:" in tag_set[0]:
+            arr_builder.append(tag_set[0].replace("dbinstanceidentifier:", ""))
         else:
             arr_builder.append("")
 
@@ -147,9 +151,16 @@ def read_util_data(file_name, output_file_name, prefix):
         write_to_csv(output_data_file, arr_builder)
 
 
-read_util_data(
-    "dd-ebsread-bytes-20220401-20220415.txt", "dd-ebsread-bytes-20220401-20220415.csv", "ebs_read_bytes"
-)
+fn = [
+    "dd-rds-cpuutilization-max-20220401-20220415",
+    "dd-rds-dbload-non-cpu-max-20220401-20220415",
+    "dd-rds-disk-queue-depth-max-20220401-20220415",
+    "dd-rds-ebsiobalance-min-20220401-20220415",
+]
+pref = ["cpuutil","dbload_non_cpu","rds_disk_queue_depth","rds_ebsiobalance"]
+x = 0
+
+read_util_data(fn[x] + ".txt", fn[x] + ".csv", pref[x])
 
 # data_file = os.path.join(os.path.dirname(__file__), "..", "data", "test1.csv")
 # write_to_csv(data_file, ['test', 'test 3'])

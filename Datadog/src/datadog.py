@@ -9,6 +9,7 @@ from datadog_api_client.v1.api.aws_integration_api import AWSIntegrationApi
 from datadog_api_client.v1.api.notebooks_api import NotebooksApi
 from datadog_api_client.v1.api.metrics_api import MetricsApi
 import os
+import json
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -22,7 +23,6 @@ def validate_api():
     with ApiClient(configuration) as api_client:
         api_instance = AuthenticationApi(api_client)
         response = api_instance.validate()
-
         print(response)
         
 def list_aws_tag_filters():
@@ -81,12 +81,16 @@ def query_metrics(metric_name):
         # 1649984400 20220415 1am
         thread = api.query_metrics(1648774800, 1649984400, metric_name, async_req=True)
         result = thread.get()
+        write_to_file(repr(result))
         # print(result)
         # print(repr(result))
-        write_to_file(repr(result))
+
+        ## TypeError: Object of type MetricsQueryMetadata is not JSON serializable
+        # jsonStr = json.dumps(result.__dict__)
+        # write_to_file(repr(result))
         
 def write_to_file(data_str):
-    with open("Datadog\data\dd-nw-in-max-20220401-20220415.txt", "a") as o:
+    with open("Datadog\data\dd-rds-ebsiobalance-min-20220401-20220415.txt", "w") as o:
         o.write(data_str)
         o.close()
 
@@ -99,11 +103,23 @@ def write_to_file(data_str):
 # query_metrics("max:aws.ec2.cpuutilization.maximum{*} by {team}.rollup(max, 3600)")
 # query_metrics("max:aws.ec2.cpuutilization.maximum{*} by {team,name,instance_id}")
 
+## EC2
 # CPU
 # query_metrics("max:aws.ec2.cpuutilization.maximum{*} by {team,name,instance_id}.rollup(max, 86400)")
-# NW in
-query_metrics("max:aws.ec2.network_in.maximum{*} by {team,name,instance_id}.rollup(max, 86400)")
+# NW
+# query_metrics("max:aws.ec2.network_in.maximum{*} by {team,name,instance_id}.rollup(max, 86400)")
+# query_metrics("max:aws.ec2.network_out.maximum{*} by {team,name,instance_id}.rollup(max, 86400)")
+# Disk
+# query_metrics("max:aws.ec2.ebsread_ops{*} by {team,name,instance_id}.as_rate().rollup(max, 86400)")
+# query_metrics("max:aws.ec2.ebswrite_ops{*} by {team,name,instance_id}.as_rate().rollup(max, 86400)")
+# query_metrics("max:aws.ec2.ebsread_bytes{*} by {team,name,instance_id}.as_rate().rollup(max, 86400)")
+# query_metrics("max:aws.ec2.ebswrite_bytes{*} by {team,name,instance_id}.as_rate().rollup(max, 86400)")
+
+## RDS
+# CPU
+# query_metrics("max:aws.rds.cpuutilization{*} by {team,name,dbinstanceidentifier,envtype}.rollup(max, 86400)")
+# query_metrics("max:aws.rds.disk_queue_depth{*} by {team,name,dbinstanceidentifier,envtype}.rollup(max, 86400)")
+query_metrics("min:aws.rds.ebsiobalance{*} by {team,name,dbinstanceidentifier,envtype}.rollup(min, 86400)")
+# query_metrics("max:aws.rds.dbload_non_cpu{*} by {team,name,dbinstanceidentifier,envtype}.rollup(max, 86400)")
 
 # query_metrics("aws.rds.read_latency")
-
-# avg:aws.ec2.cpuutilization.maximum{*}
