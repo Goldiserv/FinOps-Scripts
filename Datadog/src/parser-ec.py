@@ -5,7 +5,7 @@ import json
 import csv
 import datetime
 import importlib
-file_name_mgr = importlib.import_module("file-name-mgr-rds")
+file_name_mgr = importlib.import_module("file-name-mgr-elasticache")
 
 from numpy import average
 from dotenv import load_dotenv
@@ -99,8 +99,8 @@ def read_util_data(file_name, output_file_name, prefix, use_max, num_tags, num_d
     for series_obj in json_object["series"]:  # array of Json
         arr_builder = []
         tag_set = series_obj["tag_set"]
-        if "dbinstanceidentifier:" in tag_set[0]:
-            arr_builder.append(tag_set[0].replace("dbinstanceidentifier:", ""))
+        if "cacheclusterid:" in tag_set[1]:
+            arr_builder.append(tag_set[1].replace("cacheclusterid:", ""))
         else:
             arr_builder.append("")
 
@@ -131,13 +131,13 @@ def read_util_data(file_name, output_file_name, prefix, use_max, num_tags, num_d
         write_to_csv(output_data_file, arr_builder)
 
 
-for x in range(6, 10):
+for x in range(0, 5):
     save_file_name_csv = file_name_mgr.file_name(x, ".csv")
     print("saving " + save_file_name_csv)
     file_name_txt = file_name_mgr.file_name(x, ".txt")
     prefix = file_name_mgr.prefix(x)
     use_max = file_name_mgr.agg(x) == "max"
-    read_util_data(file_name_txt, save_file_name_csv, prefix, use_max, 6, 24*7)
+    read_util_data(file_name_txt, save_file_name_csv, prefix, use_max, 6, 14)
 
 # data_file = os.path.join(os.path.dirname(__file__), "..", "data", "test1.csv")
 # write_to_csv(data_file, ['test', 'test 3'])

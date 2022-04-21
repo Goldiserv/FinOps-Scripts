@@ -9,22 +9,24 @@ from datadog_api_client.v1.api.aws_integration_api import AWSIntegrationApi
 from datadog_api_client.v1.api.notebooks_api import NotebooksApi
 from datadog_api_client.v1.api.metrics_api import MetricsApi
 import os
-import json
+import importlib
+file_name_mgr = importlib.import_module("file-name-mgr-elasticache")
 from dotenv import load_dotenv
-
 load_dotenv()
 
 configuration = Configuration()
 configuration.api_key["apiKeyAuth"] = os.getenv("DD_API_KEY")
-configuration.api_key["appKeyAuth"] =  os.getenv("DD_APP_KEY")
+configuration.api_key["appKeyAuth"] = os.getenv("DD_APP_KEY")
 configuration.server_variables["site"] = "datadoghq.com"
+
 
 def validate_api():
     with ApiClient(configuration) as api_client:
         api_instance = AuthenticationApi(api_client)
         response = api_instance.validate()
         print(response)
-        
+
+
 def list_aws_tag_filters():
     with ApiClient(configuration) as api_client:
         api_instance = AWSIntegrationApi(api_client)
@@ -45,11 +47,13 @@ def list_aws_tag_filters():
              {'namespace': 'lambda', 'tag_filter_str': None}]}
         """
 
+
 def list_integrations():
     with ApiClient(configuration) as api_client:
         api_instance = AWSIntegrationApi(api_client)
         response = api_instance.list_aws_accounts()
         print(response)
+
 
 def list_notebooks():
     with ApiClient(configuration) as api_client:
@@ -58,12 +62,14 @@ def list_notebooks():
         result = thread.get()
         print(result)
 
+
 def get_notebook(notebook_id):
     with ApiClient(configuration) as api_client:
         api = NotebooksApi(api_client)
         thread = api.get_notebook(notebook_id, async_req=True)
         result = thread.get()
         print(result)
+
 
 def get_metric_metadata(metric_name):
     with ApiClient(configuration) as api_client:
@@ -72,7 +78,8 @@ def get_metric_metadata(metric_name):
         result = thread.get()
         print(result)
 
-def query_metrics(metric_name):
+
+def query_metrics(metric_name, file_name):
     with ApiClient(configuration) as api_client:
         api = MetricsApi(api_client)
         # 1648774800 20220401 1am
@@ -81,18 +88,23 @@ def query_metrics(metric_name):
         # 1649984400 20220415 1am
         thread = api.query_metrics(1648774800, 1649984400, metric_name, async_req=True)
         result = thread.get()
-        write_to_file(repr(result))
+        write_to_file(repr(result), file_name)
         # print(result)
         # print(repr(result))
 
         ## TypeError: Object of type MetricsQueryMetadata is not JSON serializable
         # jsonStr = json.dumps(result.__dict__)
         # write_to_file(repr(result))
-        
-def write_to_file(data_str):
-    with open("Datadog\data\dd-rds-ebsiobalance-min-20220401-20220415.txt", "w") as o:
+
+
+def write_to_file(data_str, file_name):
+    data_file = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "data", file_name)
+    )
+    with open(data_file, "w") as o:
         o.write(data_str)
         o.close()
+
 
 # Uncomment any line below to run
 
@@ -116,10 +128,19 @@ def write_to_file(data_str):
 # query_metrics("max:aws.ec2.ebswrite_bytes{*} by {team,name,instance_id}.as_rate().rollup(max, 86400)")
 
 ## RDS
-# CPU
-# query_metrics("max:aws.rds.cpuutilization{*} by {team,name,dbinstanceidentifier,envtype}.rollup(max, 86400)")
-# query_metrics("max:aws.rds.disk_queue_depth{*} by {team,name,dbinstanceidentifier,envtype}.rollup(max, 86400)")
-query_metrics("min:aws.rds.ebsiobalance{*} by {team,name,dbinstanceidentifier,envtype}.rollup(min, 86400)")
-# query_metrics("max:aws.rds.dbload_non_cpu{*} by {team,name,dbinstanceidentifier,envtype}.rollup(max, 86400)")
+# for x in range(7,8):
+x = 3
+query_str = (
+    file_name_mgr.agg(x)
+    + ":aws.elasticache." #ec2, rds
+    + file_name_mgr.dd_metric_name(x)
+    + "{*} by {team,name,envtype,cache_node_type,cacheclusterid}" #dbinstanceidentifier, cacheclusterid
+    + file_name_mgr.as_rate_or_not(x)
+    + file_name_mgr.rollup(x)
+)
+save_file_name = file_name_mgr.file_name(x,".txt")
+print(query_str)
+print(save_file_name)
+query_metrics(query_str, save_file_name)
 
 # query_metrics("aws.rds.read_latency")
