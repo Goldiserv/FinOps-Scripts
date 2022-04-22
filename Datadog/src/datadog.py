@@ -10,7 +10,7 @@ from datadog_api_client.v1.api.notebooks_api import NotebooksApi
 from datadog_api_client.v1.api.metrics_api import MetricsApi
 import os
 import importlib
-file_name_mgr = importlib.import_module("file-name-mgr-elasticache")
+file_name_mgr = importlib.import_module("file-name-mgr-ec")
 from dotenv import load_dotenv
 load_dotenv()
 

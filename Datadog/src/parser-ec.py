@@ -5,7 +5,7 @@ import json
 import csv
 import datetime
 import importlib
-file_name_mgr = importlib.import_module("file-name-mgr-elasticache")
+file_name_mgr = importlib.import_module("file-name-mgr-ec")
 
 from numpy import average
 from dotenv import load_dotenv

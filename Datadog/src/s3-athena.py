@@ -2,9 +2,6 @@ import boto3
 import os
 from dotenv import load_dotenv
 import importlib
-
-file_name_mgr = importlib.import_module("file-name-mgr-elasticache")
-
 load_dotenv()
 
 session = boto3.Session(
@@ -66,7 +63,7 @@ def query_builder_create_table(instance_identifier, table_name, x, s3_folder, us
     return string_builder
 
 
-def query_builder_create_join(instance_identifier, table_name, range_start, range_end):
+def query_builder_create_join(product_servicename, instance_identifier, end_str, table_name, range_start, range_end):
     string_builder = "CREATE OR REPLACE VIEW " + table_name + " AS\n"
     string_builder += "SELECT a." + instance_identifier
     string_builder += """
@@ -101,7 +98,9 @@ def query_builder_create_join(instance_identifier, table_name, range_start, rang
 
     for x in range(range_start + 1, range_end):
         prefix = file_name_mgr.prefix(x)
-        string_builder += ", " + prefix + "." + prefix + "_" + file_name_mgr.agg(x) + "\n"
+        string_builder += (
+            ", " + prefix + "." + prefix + "_" + file_name_mgr.agg(x) + "\n"
+        )
         string_builder += ", " + prefix + "." + prefix + "_avg" + "\n"
 
     string_builder += (
@@ -119,10 +118,11 @@ def query_builder_create_join(instance_identifier, table_name, range_start, rang
             ' FROM "sg-customer-2022-sb"."'
             + file_name_mgr.athena_table_name(x)
             + '") as '
-            + prefix  + "\n"
+            + prefix
+            + "\n"
         )
         string_builder += (
-            " on a." + instance_identifier + " = " + prefix + "." + instance_identifier
+            " on a." + instance_identifier + " = " + prefix + "." + instance_identifier + "\n"
         )
 
     string_builder += """
@@ -154,14 +154,17 @@ def query_builder_create_join(instance_identifier, table_name, range_start, rang
         "cur_athena"  --"athena_db_name".cur_tbl_cost_management
     WHERE true
         -- and line_item_operation like '%RunInstances%'
-        -- and product_servicename = 'Amazon Relational Database Service'
-        and product_servicename = 'Amazon ElastiCache'
+    """
+
+    string_builder += "    and product_servicename = '" + product_servicename + "'"
+
+    string_builder += """
         and product_instance_type <> ''
     GROUP BY 1,2,3,4,5,6,7,8,9
     ) as cost
-    on (cost.line_item_resource_id like 'arn:aws:elasticache%' and cost.line_item_resource_id like concat('%cluster:',a."""
+    """
     # on (cost.line_item_resource_id like 'arn:aws:rds%' and cost.line_item_resource_id like concat('%db:',a."""
-    string_builder += instance_identifier + "));"
+    string_builder += end_str
 
     # print(string_builder)
     return string_builder
@@ -192,7 +195,7 @@ def run_athena(db_name, output_location, query_str):
     print(response)
 
 
-for x in range(1, 5):
+for x in range(1, 2):
     # upload to s3
     # input_file_path = os.path.abspath(
     #     os.path.join(
@@ -219,5 +222,18 @@ for x in range(1, 5):
     # run_athena("sg-customer-2022-sb", "s3://sg-customer-2022-sb/Unsaved/", query_str)
     print("done")
 
-str = query_builder_create_join("cacheclusterid", "ec_cost_and_util", 0, 5)
+service_specific_str = {
+    "ec2": ['Amazon Amazon Elastic Compute Cloud', "instance_id", "on cost.line_item_resource_id = a.instance_id ));"],
+    "rds": ['Amazon Relational Database Service', "dbinstanceidentifier", "on (cost.line_item_resource_id like 'arn:aws:rds%' and cost.line_item_resource_id like concat('%db:' ,a.dbinstanceidentifier));"],
+    "ec": ["Amazon ElastiCache","cacheclusterid", "on (cost.line_item_resource_id like 'arn:aws:elasticache%' and cost.line_item_resource_id like concat('%cluster:' ,a.cacheclusterid));"],
+}
+
+# and line_item_operation like '%RunInstances%'
+# and product_servicename = 'Amazon Elastic Compute Cloud'
+# a.instance_id = cost.line_item_resource_id
+
+selected_svc = "rds"
+file_name_mgr = importlib.import_module("file-name-mgr-"+selected_svc)
+str = query_builder_create_join(service_specific_str[selected_svc][0], service_specific_str[selected_svc][1], service_specific_str[selected_svc][2], selected_svc + "_cost_and_util", 0, 12)
+# range_end should be equal to arr size in file_name_mgr
 print(str)

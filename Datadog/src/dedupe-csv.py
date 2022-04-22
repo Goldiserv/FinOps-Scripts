@@ -138,7 +138,7 @@ def clean_data(instance_identifier, d, prefix, use_max, num_tags, num_datapoints
     # print(dbinstanceidentifier_list)
     return instanceidentifier_list
 
-file_name_mgr = importlib.import_module("file-name-mgr-elasticache")
+file_name_mgr = importlib.import_module("file-name-mgr-ec")
 for x in range(0, 5):
     # x = 3
     dict = read_from_file(file_name_mgr.file_name(x, ".csv"))
