@@ -1,8 +1,3 @@
-# from datadog_api_client.v1 import ApiClient, Configuration
-# from datadog_api_client.v1.api.monitors_api import MonitorsApi
-# from datadog_api_client.v1.model.monitor import Monitor
-# from datadog_api_client.v1.model.monitor_type import MonitorType
-
 from datadog_api_client.v1 import ApiClient, Configuration
 from datadog_api_client.v1.api.authentication_api import AuthenticationApi
 from datadog_api_client.v1.api.aws_integration_api import AWSIntegrationApi
@@ -10,14 +5,26 @@ from datadog_api_client.v1.api.notebooks_api import NotebooksApi
 from datadog_api_client.v1.api.metrics_api import MetricsApi
 import os
 import importlib
+
 file_name_mgr = importlib.import_module("file-name-mgr-ec")
 from dotenv import load_dotenv
+
 load_dotenv()
+
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
 
 configuration = Configuration()
 configuration.api_key["apiKeyAuth"] = os.getenv("DD_API_KEY")
 configuration.api_key["appKeyAuth"] = os.getenv("DD_APP_KEY")
-configuration.server_variables["site"] = "datadoghq.com"
+configuration.server_variables["site"] = os.getenv("DATADOG_SITE")
+
+
+def check_user():
+    with ApiClient(configuration) as api_client:
+        api_instance = AuthenticationApi(api_client)
+        response = api_instance.validate()
+        print(response)
 
 
 def validate_api():
@@ -58,16 +65,16 @@ def list_integrations():
 def list_notebooks():
     with ApiClient(configuration) as api_client:
         api = NotebooksApi(api_client)
-        thread = api.list_notebooks(async_req=True)
-        result = thread.get()
+        result = api.list_notebooks()
         print(result)
 
 
-def get_notebook(notebook_id):
+def get_notebook(NOTEBOOK_DATA_ID):
     with ApiClient(configuration) as api_client:
         api = NotebooksApi(api_client)
-        thread = api.get_notebook(notebook_id, async_req=True)
-        result = thread.get()
+        result = api.get_notebook(
+            notebook_id=int(NOTEBOOK_DATA_ID),
+        )
         print(result)
 
 
@@ -86,9 +93,12 @@ def query_metrics(metric_name, file_name):
         # 1649898000 20220414 1am
         # 1649983800 20220415 12:50am
         # 1649984400 20220415 1am
-        thread = api.query_metrics(1648774800, 1649984400, metric_name, async_req=True)
-        result = thread.get()
-        write_to_file(repr(result), file_name)
+        response = api.query_metrics(
+            _from=int((datetime.now() + relativedelta(days=-1)).timestamp()),
+            to=int(datetime.now().timestamp()),
+            query=metric_name,  # e.g. system.cpu.idle{*},
+        )
+        write_to_file(repr(response), file_name)
         # print(result)
         # print(repr(result))
 
@@ -107,10 +117,13 @@ def write_to_file(data_str, file_name):
 
 
 # Uncomment any line below to run
-
-# max:aws.ec2.cpuutilization.maximum{*} by {team}
+### Notebooks
 # list_notebooks()
-# get_notebook(2275429)
+# get_notebook(33423)
+
+### Query
+queryStr = "max:kubernetes.memory.usage_pct{*} by {pod_name}.rollup(max, 3600)"
+query_metrics(queryStr, "max.kubernetes.memory.usage_pct - 20220705-20220706.txt")
 
 # query_metrics("max:aws.ec2.cpuutilization.maximum{*} by {team}.rollup(max, 3600)")
 # query_metrics("max:aws.ec2.cpuutilization.maximum{*} by {team,name,instance_id}")
@@ -129,18 +142,18 @@ def write_to_file(data_str, file_name):
 
 ## RDS
 # for x in range(7,8):
-x = 3
-query_str = (
-    file_name_mgr.agg(x)
-    + ":aws.elasticache." #ec2, rds
-    + file_name_mgr.dd_metric_name(x)
-    + "{*} by {team,name,envtype,cache_node_type,cacheclusterid}" #dbinstanceidentifier, cacheclusterid
-    + file_name_mgr.as_rate_or_not(x)
-    + file_name_mgr.rollup(x)
-)
-save_file_name = file_name_mgr.file_name(x,".txt")
-print(query_str)
-print(save_file_name)
-query_metrics(query_str, save_file_name)
+# x = 3
+# query_str = (
+#     file_name_mgr.agg(x)
+#     + ":aws.elasticache." #ec2, rds
+#     + file_name_mgr.dd_metric_name(x)
+#     + "{*} by {team,name,envtype,cache_node_type,cacheclusterid}" #dbinstanceidentifier, cacheclusterid
+#     + file_name_mgr.as_rate_or_not(x)
+#     + file_name_mgr.rollup(x)
+# )
+# save_file_name = file_name_mgr.file_name(x,".txt")
+# print(query_str)
+# print(save_file_name)
+# query_metrics(query_str, save_file_name)
 
 # query_metrics("aws.rds.read_latency")

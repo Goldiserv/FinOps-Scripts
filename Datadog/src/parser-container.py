@@ -4,6 +4,10 @@ import os
 import json
 import csv
 import datetime
+import importlib
+
+file_name_mgr = importlib.import_module("file-name-mgr-container")
+
 from numpy import average
 from dotenv import load_dotenv
 
@@ -16,12 +20,10 @@ def epoch_to_datetime(epoch_time_secs):
     # print("Converted Datetime:", date_time)
     return date_time
 
-
 def write_to_file(data_file, data_str):
     with open(data_file, "a") as o:
         o.write(data_str)
         o.close()
-
 
 def write_to_csv(data_file, data_row_array):
     with open(data_file, "a", newline="") as csvfile:
@@ -29,40 +31,24 @@ def write_to_csv(data_file, data_row_array):
         # csv_w.writerow(['Spam'] * 5 + ['Baked Beans'])
         csv_w.writerow(data_row_array)
 
-
 def read_from_file(path):
     with open(path, "r") as o:
         resp = o.read()
         o.close()
         return resp
 
-
-def read_dummy_data():
-    data_file = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "..", "data", "test.txt")
-    )
-
-    # json string data
-    input_str = read_from_file(data_file)
-    # print(type(input_str))
-
-    # convert string to  object
-    json_object = json.loads(input_str)
-    # print(type(json_object))
-
-    # access first_name
-    for employee in json_object["employees"]:
-        print(employee["first_name"])
-
-
-def read_util_data(file_name, output_file_name, prefix):
+def read_util_data(
+    file_name, output_file_name, prefix, use_max, num_tags, num_datapoints
+):
     data_file = os.path.abspath(
         os.path.join(os.path.dirname(__file__), "..", "data", file_name)
     )
     input_str = read_from_file(data_file)
     # print(input_str)
-    input_str = str(input_str).replace("'\n                           '", '')
-    input_str = str(input_str).replace("'\n          '", '')
+    input_str = str(input_str).replace("'\n                           '", "")
+    input_str = str(input_str).replace("'\n          '", "")
+    input_str = str(input_str).replace("'short_name': None", "'short_name': 'None'")
+    input_str = str(input_str).replace("'unit': None", "'unit': 'None'")
     input_str = str(input_str).replace("'", '"')
     input_str = str(input_str).replace(" None]", " null]")
     json_object = json.loads(input_str)
@@ -82,44 +68,23 @@ def read_util_data(file_name, output_file_name, prefix):
             output_data_file,
             ["period", "from", f, "to", t],
         )
-        write_to_csv(output_data_file, ["", "", prefix + "_max"])
+        write_to_csv(
+            output_data_file,
+            ["", "", prefix + "_" + ("max" if use_max == True else "min")],
+        )
 
     # write_headers() #comment out if not writing headers
 
     write_to_csv(
         output_data_file,
-        [
-            "instance_id",
-            "scope",
-            prefix + "_count",
-            prefix + "_max",
-            prefix + "_avg",
-            prefix + "_d1",
-            prefix + "_d2",
-            prefix + "_d3",
-            prefix + "_d4",
-            prefix + "_d5",
-            prefix + "_d6",
-            prefix + "_d7",
-            prefix + "_d8",
-            prefix + "_d9",
-            prefix + "_d10",
-            prefix + "_d11",
-            prefix + "_d12",
-            prefix + "_d13",
-            prefix + "_d14",
-            "tags_1",
-            "tags_2",
-            "tags_3",
-            "tags_4",
-        ],
+        file_name_mgr.get_csv_columns(prefix, use_max, num_tags, num_datapoints),
     )
 
     for series_obj in json_object["series"]:  # array of Json
         arr_builder = []
         tag_set = series_obj["tag_set"]
-        if "instance_id:" in tag_set[0]:
-            arr_builder.append(tag_set[0].replace("instance_id:", ""))
+        if "pod_name:" in tag_set[0]:
+            arr_builder.append(tag_set[0].replace("pod_name:", ""))
         else:
             arr_builder.append("")
 
@@ -132,7 +97,11 @@ def read_util_data(file_name, output_file_name, prefix):
             if not (p[1] is None):
                 p_builder.append(p[1])
         arr_builder.append(len(p_builder))
-        arr_builder.append(max(p_builder))
+        if use_max == True:
+            arr_builder.append(max(p_builder))
+        else:
+            arr_builder.append(min(p_builder))
+
         arr_builder.append(average(p_builder))
 
         for p in pointlist:
@@ -146,9 +115,17 @@ def read_util_data(file_name, output_file_name, prefix):
         write_to_csv(output_data_file, arr_builder)
 
 
-read_util_data(
-    "dd-ebsread-bytes-20220401-20220415.txt", "dd-ebsread-bytes-20220401-20220415.csv", "ebs_read_bytes"
-)
+timeRange = "20220705-20220706"
+# save_file_name_csv = file_name_mgr.file_name(0, timeRange, ".csv")
+# print("saving " + save_file_name_csv)
+
+for x in range(0, 1):
+    save_file_name_csv = file_name_mgr.file_name(0, timeRange, ".csv")
+    print("saving " + save_file_name_csv)
+    file_name_txt = file_name_mgr.file_name(x, timeRange, ".txt")
+    prefix = file_name_mgr.prefix(x)
+    use_max = file_name_mgr.agg(x) == "max"
+    read_util_data(file_name_txt, save_file_name_csv, prefix, use_max, 6, 14)
 
 # data_file = os.path.join(os.path.dirname(__file__), "..", "data", "test1.csv")
 # write_to_csv(data_file, ['test', 'test 3'])
