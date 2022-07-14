@@ -33,16 +33,12 @@ import com.google.gson.Gson;
 
 import static software.amazon.lambda.powertools.tracing.CaptureMode.DISABLED;
 
-/**
- * Handler for requests to Lambda function.
- */
 public class App implements RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
 
     @Tracing(captureMode = DISABLED)
     @Metrics(captureColdStart = true)
 
     static MetricsQueryResponse queryData(String queryString) {
-        // code to be executed
 
         HashMap<String, String> secrets = new HashMap<>();
         secrets.put("apiKeyAuth", System.getenv("DD_API_KEY"));
@@ -73,12 +69,6 @@ public class App implements RequestHandler<APIGatewayProxyRequestEvent, APIGatew
     }
 
     static List<Object[]> formatResponseData(MetricsQueryResponse resp) {
-        // Gson g = new Gson();
-
-        // MetricsQueryResponse metricsQueryResponse = g.fromJson("{\"name\":
-        // \"John\"}", MetricsQueryResponse.class);
-        // System.out.println(metricsQueryResponse.getSeries()); //John
-        // System.out.println(g.toJson(metricsQueryResponse)); // {"name":"John"}
 
         List<Object[]> result_holder = new ArrayList<Object[]>();
 
@@ -157,11 +147,8 @@ public class App implements RequestHandler<APIGatewayProxyRequestEvent, APIGatew
     }
 
     static Object[] getCpuUtil(Object[] cpu_usage_data, Object[] cpu_requests_data) {
-        // e.g. cpu_usage_data = ['kubernetes.cpu.usage.total', 15, 4.771e-06,
-        // 3.496e-06]
-        // e.g. cpu_requests_data = ['kubernetes.cpu.requests', 15,
-        // 0.0010000000474974513,
-        // 0.0010000000474974513]
+        // e.g. cpu_usage_data = ['kubernetes.cpu.usage.total', 15, 4.771e-06, 3.496e-06]
+        // e.g. cpu_requests_data = ['kubernetes.cpu.requests', 15, 0.0010000000474974513, 0.0010000000474974513]
         // String[] col_headings = new String[] {"Metric", "Count", "Max", "Avg"};
 
         Double max_util = Double.parseDouble(cpu_usage_data[2].toString())
@@ -191,22 +178,40 @@ public class App implements RequestHandler<APIGatewayProxyRequestEvent, APIGatew
         APIGatewayProxyResponseEvent response = new APIGatewayProxyResponseEvent()
                 .withHeaders(headers);
         try {
-            Gson gson = new Gson();
-            System.out.println("Start");
-            
-            System.out.println("CONTEXT: " + gson.toJson(context));
-            // process event
-            System.out.println("EVENT: " + gson.toJson(event.getPathParameters().get("id")));
-            // e.g. event.getPathParameters() = {"id":"test2"}
 
-            // String pathParamId = gson.toJson(event.pathParameters.id)
+            System.out.println("Start");
+            Gson gson = new Gson();
+
+            String pod_name = gson.toJson(event.getPathParameters().get("pod_name"));
+
+            String queryString = buildQuery(pod_name);
+            // e.g. "ac-exchange-566d997f8-2z7rn"
+
+            MetricsQueryResponse resp = queryData(queryString);
+            List<Object[]> response_formatted = formatResponseData(resp);
+            // e.g. [["kubernetes.memory.usage_pct",24,65.93246459960938,65.68818092346191],
+            // ["kubernetes.memory.usage",24,7.07944448E8,7.05321472E8],
+            // ["kubernetes.memory.limits",24,1.073741824E9,1.073741824E9],
+            // ["kubernetes.cpu.usage.total",24,0.050148744,0.01724469358333333],
+            // ["kubernetes.cpu.requests",24,0.009999999776482582,0.009999999776482582]]
+
+            Object[] cpu_util_row = getCpuUtil(response_formatted.get(3), response_formatted.get(4));
+            // System.out.println(gson.toJson(cpu_util_row));
+            // e.g. ["kubernetes.cpu.usage_pct",24, 5.1, 4.8]
+            response_formatted.add(cpu_util_row);
+
+            String response_formatted_json = gson.toJson(response_formatted);
+            
+            System.out.println(response_formatted_json);
+
+            System.out.println("Done");
 
             return response
                     .withStatusCode(200)
-                    .withBody("success");
+                    .withBody(response_formatted_json);
         } catch (Exception e) {
             return response
-                    .withBody("{}")
+                    .withBody(e.toString())
                     .withStatusCode(500);
         }
     }

@@ -1,12 +1,13 @@
+from operator import concat
 from datadog_api_client.v1 import ApiClient, Configuration
 from datadog_api_client.v1.api.authentication_api import AuthenticationApi
 from datadog_api_client.v1.api.aws_integration_api import AWSIntegrationApi
 from datadog_api_client.v1.api.notebooks_api import NotebooksApi
 from datadog_api_client.v1.api.metrics_api import MetricsApi
 import os
-import importlib
+import myUtils
+import env
 
-file_name_mgr = importlib.import_module("file-name-mgr-ec")
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -86,7 +87,9 @@ def get_metric_metadata(metric_name):
         print(result)
 
 
-def query_metrics(metric_name, file_name):
+def query_metrics(metric_name, file_name, relative_days_positive=14):
+    # re.search(r'[^A-Za-z0-9_\-\\]',file_name):
+
     with ApiClient(configuration) as api_client:
         api = MetricsApi(api_client)
         # 1648774800 20220401 1am
@@ -94,8 +97,17 @@ def query_metrics(metric_name, file_name):
         # 1649983800 20220415 12:50am
         # 1649984400 20220415 1am
         response = api.query_metrics(
-            _from=int((datetime.now() + relativedelta(days=-1)).timestamp()),
-            to=int(datetime.now().timestamp()),
+            _from=int(
+                (
+                    datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+                    + relativedelta(days=-relative_days_positive)
+                ).timestamp()
+            ),
+            to=int(
+                datetime.now()
+                .replace(hour=0, minute=0, second=0, microsecond=0)
+                .timestamp()
+            ),
             query=metric_name,  # e.g. system.cpu.idle{*},
         )
         write_to_file(repr(response), file_name)
@@ -122,8 +134,64 @@ def write_to_file(data_str, file_name):
 # get_notebook(33423)
 
 ### Query
-queryStr = "max:kubernetes.memory.usage_pct{*} by {pod_name}.rollup(max, 3600)"
-query_metrics(queryStr, "max.kubernetes.memory.usage_pct - 20220705-20220706.txt")
+# queryStr = "max:kubernetes.memory.usage_pct{*} by {pod_name,kube_cluster_name,kube_service,kube_app_managed_by,kube_namespace,kube_ownerref_name}, \
+#                     max:kubernetes.memory.usage{*} by {pod_name,kube_cluster_name,kube_service,kube_app_managed_by,kube_namespace,kube_ownerref_name}, \
+#                     max:kubernetes.memory.limits{*} by {pod_name,kube_cluster_name,kube_service,kube_app_managed_by,kube_namespace,kube_ownerref_name}, \
+#                     max:kubernetes.cpu.usage.total{*} by {pod_name,kube_cluster_name,kube_service,kube_app_managed_by,kube_namespace,kube_ownerref_name}.rollup(avg, 14400), \
+#                     max:kubernetes.cpu.requests{*} by {pod_name,kube_cluster_name,kube_service,kube_app_managed_by,kube_namespace,kube_ownerref_name}.rollup(avg, 14400)"
+
+clusterIndex = 2
+queryIndex = 0
+kube_cluster_names = env.kube_cluster_names
+queryStr = [
+    "max:kubernetes.memory.usage_pct{{kube_cluster_name:{filter}}} by {{pod_name,kube_cluster_name,kube_service,kube_app_managed_by,kube_namespace,kube_ownerref_name}}.rollup(avg, 14400)".format(
+        filter=kube_cluster_names[clusterIndex]
+    ),
+    "max:kubernetes.memory.limits{{kube_cluster_name:{filter}}} by {{pod_name,kube_cluster_name,kube_service,kube_app_managed_by,kube_namespace,kube_ownerref_name}}.rollup(avg, 14400)".format(
+        filter=kube_cluster_names[clusterIndex]
+    ),
+    "max:kubernetes.cpu.usage.total{{kube_cluster_name:{filter}}} by {{pod_name,kube_cluster_name,kube_service,kube_app_managed_by,kube_namespace,kube_ownerref_name}}.rollup(avg, 14400)".format(
+        filter=kube_cluster_names[clusterIndex]
+    ),
+    "max:kubernetes.cpu.requests{{kube_cluster_name:{filter}}} by {{pod_name,kube_cluster_name,kube_service,kube_app_managed_by,kube_namespace,kube_ownerref_name}}.rollup(avg, 14400)".format(
+        filter=kube_cluster_names[clusterIndex]
+    ),
+]
+dateTimeVar = myUtils.getTimeRange(14)
+fileOutputName = [
+    "max.kubernetes.memory.usage_pct - "
+    + kube_cluster_names[clusterIndex]
+    + " - "
+    + dateTimeVar
+    + ".txt",
+    "max.kubernetes.memory.limits - "
+    + kube_cluster_names[clusterIndex]
+    + " - "
+    + dateTimeVar
+    + ".txt",
+    "max.kubernetes.cpu.usage.total - "
+    + kube_cluster_names[clusterIndex]
+    + " - "
+    + dateTimeVar
+    + ".txt",
+    "max.kubernetes.cpu.requests - "
+    + kube_cluster_names[clusterIndex]
+    + " - "
+    + dateTimeVar
+    + ".txt",
+]
+print(
+    "Running:\n", queryStr[queryIndex], "\n", "Saving to:\n", fileOutputName[queryIndex]
+)
+query_metrics(
+    queryStr[queryIndex],
+    fileOutputName[queryIndex],
+    14,
+)
+
+# max:kubernetes.memory.usage{pod_name:ac-exchange-566d997f8-2z7rn} by {pod_name,kube_cluster_name,kube_service,kube_app_managed_by,kube_namespace,kube_ownerref_name}.rollup(max, 86400)
+# queryStr = "max:kubernetes.memory.usage_pct{*} by {pod_name}.rollup(max, 3600)"
+
 
 # query_metrics("max:aws.ec2.cpuutilization.maximum{*} by {team}.rollup(max, 3600)")
 # query_metrics("max:aws.ec2.cpuutilization.maximum{*} by {team,name,instance_id}")

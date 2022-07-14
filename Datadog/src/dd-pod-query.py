@@ -20,7 +20,6 @@ Params: pod_name, period_days, aggregation_secs
 Return: pod cpu, mem; util and limits
 """
 
-
 def validate_api():
     with ApiClient(configuration) as api_client:
         api_instance = AuthenticationApi(api_client)
@@ -36,11 +35,11 @@ def get_metric_metadata(metric_name):
         print(result)
 
 
-def query_metrics(metric_name):
+def query_metrics(metric_name, period_days):
     with ApiClient(configuration) as api_client:
         api = MetricsApi(api_client)
         response = api.query_metrics(
-            _from=int((datetime.now() + relativedelta(days=-1)).timestamp()),
+            _from=int((datetime.now() + relativedelta(days=-period_days)).timestamp()),
             to=int(datetime.now().timestamp()),
             query=metric_name,  # e.g. system.cpu.idle{*},
         )
@@ -127,18 +126,20 @@ def get_cpu_util(cpu_usage_data, cpu_requests_data):
     return ["kubernetes.cpu.usage_pct", cpu_usage_data[1], max_util * 100, avg_util * 100]
 
 
-def get_util(pod_name, period_days=1, aggregation_secs=3600):
+def get_util(pod_name, period_days=7):
     print("starting get util ...")
 
-    dd_query = "max:kubernetes.memory.usage_pct{{pod_name:{pod_name}}} by {{pod_name}}.rollup(max, {aggregation_secs}), \
-                     max:kubernetes.memory.usage{{pod_name:{pod_name}}} by {{pod_name}}.rollup(max, {aggregation_secs}), \
-                     max:kubernetes.memory.limits{{pod_name:{pod_name}}} by {{pod_name}}.rollup(max, {aggregation_secs}), \
-                     max:kubernetes.cpu.usage.total{{pod_name:{pod_name}}} by {{pod_name}}.rollup(max, {aggregation_secs}), \
-                     max:kubernetes.cpu.requests{{pod_name:{pod_name}}} by {{pod_name}}.rollup(max, {aggregation_secs}) \
+    dd_query = "max:kubernetes.memory.usage_pct{{pod_name:{pod_name}}} by {{pod_name,kube_cluster_name,kube_service,kube_app_managed_by,kube_namespace,kube_ownerref_name}}, \
+                     max:kubernetes.memory.usage{{pod_name:{pod_name}}} by {{pod_name,kube_cluster_name,kube_service,kube_app_managed_by,kube_namespace,kube_ownerref_name}}, \
+                     max:kubernetes.memory.limits{{pod_name:{pod_name}}} by {{pod_name,kube_cluster_name,kube_service,kube_app_managed_by,kube_namespace,kube_ownerref_name}}, \
+                     max:kubernetes.cpu.usage.total{{pod_name:{pod_name}}} by {{pod_name,kube_cluster_name,kube_service,kube_app_managed_by,kube_namespace,kube_ownerref_name}}, \
+                     max:kubernetes.cpu.requests{{pod_name:{pod_name}}} by {{pod_name,kube_cluster_name,kube_service,kube_app_managed_by,kube_namespace,kube_ownerref_name}} \
     ".format(
-        pod_name=pod_name, aggregation_secs=aggregation_secs
+        pod_name=pod_name
     )
-    dd_resp = query_metrics(dd_query)
+    # consider adding more identifying metrics pod_name,kube_cluster_name,kube_service,kube_app_managed_by,kube_namespace,kube_ownerref_name
+
+    dd_resp = query_metrics(dd_query, period_days)
     response_formatted = format_dd_query_resp(repr(dd_resp), False)
     # print(response_formatted)
     cpu_util_row = get_cpu_util(response_formatted[3], response_formatted[4])
