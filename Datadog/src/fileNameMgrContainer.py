@@ -11,7 +11,7 @@ arr = [
 
 kube_cluster_names = env.kube_cluster_names
 
-dateTimeVar = myUtils.getTimeRange(14)
+dateTimeVar = myUtils.getTimeRange(1,14)
 
 def dd_metric_name(x):
     return arr[x][1]

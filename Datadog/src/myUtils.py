@@ -5,13 +5,13 @@
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 
-def getTimeRange(relative_days_positive):
+def getTimeRange(relative_days_positive, total_days_positive):
     dateTimeVar = (
         datetime.fromtimestamp(
             int(
                 (
                     datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-                    + relativedelta(days=-relative_days_positive)
+                    + relativedelta(days=-(total_days_positive+relative_days_positive))
                 ).timestamp()
             )
         ).strftime("%Y%m%d")
@@ -20,6 +20,7 @@ def getTimeRange(relative_days_positive):
             int(
                 (
                     datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+                    + relativedelta(days=-(relative_days_positive))
                 ).timestamp()
             )
         ).strftime("%Y%m%d")

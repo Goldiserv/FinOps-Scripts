@@ -141,7 +141,7 @@ def write_to_file(data_str, file_name):
 #                     max:kubernetes.cpu.requests{*} by {pod_name,kube_cluster_name,kube_service,kube_app_managed_by,kube_namespace,kube_ownerref_name}.rollup(avg, 14400)"
 
 clusterIndex = 2
-queryIndex = 0
+queryIndex = 3
 kube_cluster_names = env.kube_cluster_names
 queryStr = [
     "max:kubernetes.memory.usage_pct{{kube_cluster_name:{filter}}} by {{pod_name,kube_cluster_name,kube_service,kube_app_managed_by,kube_namespace,kube_ownerref_name}}.rollup(avg, 14400)".format(
@@ -157,7 +157,7 @@ queryStr = [
         filter=kube_cluster_names[clusterIndex]
     ),
 ]
-dateTimeVar = myUtils.getTimeRange(14)
+dateTimeVar = myUtils.getTimeRange(1,14)
 fileOutputName = [
     "max.kubernetes.memory.usage_pct - "
     + kube_cluster_names[clusterIndex]
