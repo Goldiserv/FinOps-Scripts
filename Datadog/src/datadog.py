@@ -87,7 +87,7 @@ def get_metric_metadata(metric_name):
         print(result)
 
 
-def query_metrics(metric_name, file_name, relative_days_positive=14):
+def query_metrics(metric_name, file_name, relative_days_positive=1, total_days_positive=14):
     # re.search(r'[^A-Za-z0-9_\-\\]',file_name):
 
     with ApiClient(configuration) as api_client:
@@ -100,13 +100,14 @@ def query_metrics(metric_name, file_name, relative_days_positive=14):
             _from=int(
                 (
                     datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-                    + relativedelta(days=-relative_days_positive)
+                    + relativedelta(days=-(total_days_positive+relative_days_positive))
                 ).timestamp()
             ),
             to=int(
-                datetime.now()
-                .replace(hour=0, minute=0, second=0, microsecond=0)
-                .timestamp()
+                (
+                    datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+                    + relativedelta(days=-(relative_days_positive))
+                ).timestamp()
             ),
             query=metric_name,  # e.g. system.cpu.idle{*},
         )
@@ -140,8 +141,9 @@ def write_to_file(data_str, file_name):
 #                     max:kubernetes.cpu.usage.total{*} by {pod_name,kube_cluster_name,kube_service,kube_app_managed_by,kube_namespace,kube_ownerref_name}.rollup(avg, 14400), \
 #                     max:kubernetes.cpu.requests{*} by {pod_name,kube_cluster_name,kube_service,kube_app_managed_by,kube_namespace,kube_ownerref_name}.rollup(avg, 14400)"
 
-clusterIndex = 2
-queryIndex = 3
+clusterIndex = 3 #iterate clusterIndex from 0 to 4 to filter for each cluster name. 4 is N/A
+queryIndex = 3 #iterate queryIndex from 0 to 3 to get mem, cpu, limits and util
+daysBeforeToday = 4
 kube_cluster_names = env.kube_cluster_names
 queryStr = [
     "max:kubernetes.memory.usage_pct{{kube_cluster_name:{filter}}} by {{pod_name,kube_cluster_name,kube_service,kube_app_managed_by,kube_namespace,kube_ownerref_name}}.rollup(avg, 14400)".format(
@@ -157,7 +159,7 @@ queryStr = [
         filter=kube_cluster_names[clusterIndex]
     ),
 ]
-dateTimeVar = myUtils.getTimeRange(1,14)
+dateTimeVar = myUtils.getTimeRange(daysBeforeToday,14)
 fileOutputName = [
     "max.kubernetes.memory.usage_pct - "
     + kube_cluster_names[clusterIndex]
@@ -186,6 +188,7 @@ print(
 query_metrics(
     queryStr[queryIndex],
     fileOutputName[queryIndex],
+    daysBeforeToday,
     14,
 )
 

@@ -21,5 +21,5 @@ jsonStr = json.dumps(laptop1.__dict__)
 #print json string
 print(jsonStr)
 
-x = myUtils.getTimeRange(1)
+x = myUtils.getTimeRange(4,14)
 print(x)

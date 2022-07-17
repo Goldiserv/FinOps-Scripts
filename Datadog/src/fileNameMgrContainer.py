@@ -47,6 +47,11 @@ def file_name(metricIndex, clusterIndex, timeRange, ext):
         + " - "
         + timeRange
         + "." + ext,
+        "output - "
+        + kube_cluster_names[clusterIndex]
+        + " - "
+        + timeRange
+        + "." + ext,
     ]
     return fileOutputName[metricIndex]
 
@@ -81,7 +86,7 @@ def s3_folder(x):
 def getPrefix(x): 
     return arr[x][4]
 
-def get_csv_columns(prefix, use_max, num_tags, num_datapoints):
+def get_csv_headers(prefix, use_max, num_tags, num_datapoints):
     cols = [
         "pod_name",
         "scope",
@@ -94,3 +99,4 @@ def get_csv_columns(prefix, use_max, num_tags, num_datapoints):
     for t in range(1, num_tags + 1):
         cols.append("tags_" + str(t))
     return cols
+
