@@ -9,7 +9,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-
 def epoch_to_datetime(epoch_time_secs):
     # using the datetime.fromtimestamp() function
     date_time = datetime.datetime.fromtimestamp(epoch_time_secs)

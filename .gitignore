@@ -1,3 +1,7 @@
 **/.env
+**/env.py
 
 **/data/**
+**/__pycache__/**
+
+**/java-test-maven/**

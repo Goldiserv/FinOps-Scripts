@@ -1,0 +1,16 @@
+.classpath.txt
+target
+.classpath
+.project
+.idea
+.settings
+.vscode
+*.iml
+
+notes.md
+**/assets/**
+
+# CDK asset staging directory
+.cdk.staging
+cdk.out
+
