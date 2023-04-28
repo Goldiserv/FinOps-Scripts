@@ -32,16 +32,27 @@ var options = {
 
 // axios(options).then((res) => console.log(res));
 // .catch((err) => console.log(err));
-const authOption = [
+
+// unsure what syntax to use for the key
+const authSyntax = [
   `Basic ${base64CloudyKey}`,
   `${base64CloudyKey}`,
   `Basic ${cloudyKey}`,
   `${cloudyKey}`
 ]
 
+// is this correct? 
 const resp = axios.get("https://api.cloudability.com/v3/vendors", {
   auth: {
-    username: authOption[3],
+    username: authSyntax[0],
   },
 });
+// or should the key go into the header instead like this?
+const axiosConfig = {
+  headers: {
+    Authorization: authSyntax[0],
+  },
+};
+
+
 console.log({ resp });
