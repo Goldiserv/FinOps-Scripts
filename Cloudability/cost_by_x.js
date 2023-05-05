@@ -10,8 +10,6 @@ let base64CloudyKey = buff.toString("base64");
 console.log({ base64CloudyKey });
 
 let url = "https://api.cloudability.com/v3/reporting/cost/run?start_date=end+of+last+month&end_date=end+of+last+month&dimensions=vendor&metrics=unblended_cost";
-// let url4 = "https://api.cloudability.com/v3/account_groups";
-// let url5 = "https://api.cloudability.com/v3/account_group_entries";
 
 const config = {
   headers: {
