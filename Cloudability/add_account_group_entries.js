@@ -1,4 +1,7 @@
-// Call cloudy api
+/* 
+  Bulk populates "Account Groups" into Cloudability via API.
+  Ensure first row of spreadsheet contains column headings
+*/
 const dotenv = require("dotenv");
 dotenv.config({ path: ".env" });
 const { Curl } = require("node-libcurl");
@@ -58,6 +61,9 @@ async function postToCloudability(accountGroupId, accountIdentifier, value) {
 }
 
 function convertTo12DigitStringWithHyphens(number) {
+  // console.log({ number });
+  if (!number || typeof (number / 1) != "number") return "-";
+
   // Convert the number to a string
   const numberString = number.toString();
 
@@ -77,20 +83,23 @@ function convertTo12DigitStringWithHyphens(number) {
 
   return hyphenatedString;
 }
-async function main() {
+
+async function main(
+  xlPath,
+  xlSheetName,
+  accountIdColName,
+  accountGroupId,
+  spreadsheetDataColumnName
+) {
   console.log("start");
   // read excel
-  const xlPath = process.env.XL_PATH;
-  const xlSheetName = `AcctToDeptMap`;
-  // const xlRange = "A2:F95";
   const xlData = readExcelMappings(xlPath, xlSheetName);
 
   xlData.forEach((e) => {
-    e["accountIdMod"] = convertTo12DigitStringWithHyphens(e["AWS Account ID"]);
+    e["accountIdMod"] = convertTo12DigitStringWithHyphens(e[accountIdColName]);
   });
   // console.log({ xlData });
 
-  const accountGroupId = 6651;
   const startCounter = 0;
   const endCounter = 999;
   let currentCounter = 0;
@@ -99,7 +108,7 @@ async function main() {
 
     if (currentCounter >= startCounter) {
       const accountIdentifier = entry.accountIdMod; // e.g. '1234-1234-1234';
-      const value = entry["Dept-id"]; // e.g. 'IT';
+      const value = entry[spreadsheetDataColumnName]; 
       try {
         let resp = await postToCloudability(
           accountGroupId,
@@ -116,4 +125,29 @@ async function main() {
   }
 }
 
-main();
+//Controls
+const accountGroupIdMap = {
+  //found via .\get-account-group-entries.js
+  environment: 6650,
+  "billing-dept-id": 6651,
+  "business-owner": 6901,
+  "technical-owner": 6902,
+};
+// const spreadsheetStartRow = 2;
+const spreadsheetColumnNamesLegacyAWS = {
+  environment: "environment account group",
+  "billing-dept-id": "billing-dept-id account group",
+  "business-owner": "business-owner account group",
+  "technical-owner": "technical-owner account group",
+};
+const xlPath = process.env.XL_PATH;
+const xlSheetName = `Legacy AWS`;
+const accountIdColName = `Account ID`;
+
+main(
+  xlPath,
+  xlSheetName,
+  accountIdColName,
+  accountGroupIdMap.environment,
+  spreadsheetColumnNamesLegacyAWS.environment
+);

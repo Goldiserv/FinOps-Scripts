@@ -1,4 +1,4 @@
-// Call cloudy api
+
 const dotenv = require("dotenv");
 const axios = require("axios");
 dotenv.config({ path: ".env" });
@@ -21,7 +21,7 @@ const config = {
   },
 };
 async function main() {
-  const resp = await axios.get(url[2], config);
+  const resp = await axios.get(url[1], config);
   console.log(JSON.stringify(resp.data));
 }
 
